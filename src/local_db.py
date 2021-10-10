@@ -6,6 +6,7 @@ from typing import List, Tuple
 
 from logger import log_settings
 from table_scheme import MainTable, main_table_name, Base
+from garmin_comm import MyGarmin
 
 app_log = log_settings()
 local_db_name = "common.db"
@@ -37,8 +38,13 @@ class LocalDb:
         metadata = db.MetaData()
         self.main_tb = db.Table(self._table_name, metadata,
                                 db.Column("id", db.Integer, primary_key=True, autoincrement=True),
-                                db.Column("name", db.String),
-                                db.Column("surname", db.String)
+                                db.Column("date", db.DateTime, index=True, unique=True),
+                                db.Column("actCalories", db.Float, nullable=True),
+                                db.Column("actSeconds", db.Integer, nullable=True),
+                                db.Column("highActSeconds", db.Integer, nullable=True),
+                                db.Column("maxHr", db.Integer, nullable=True),
+                                db.Column("minHr", db.Integer, nullable=True),
+                                db.Column("sleepSeconds", db.Integer, nullable=True)
                                 )
         try:
             Base.metadata.create_all(self.db_engine)
@@ -78,10 +84,16 @@ class LocalDb:
         except Exception as ex:
             app_log.error(f"Engine NOT disposed: {ex}")
 
-    def insert_entry(self, name: str, surname: str):
+    def insert_entry(self, date: datetime, act_calories: float, act_seconds: int,
+                     high_act_seconds: int, max_hr: int, min_hr: int, sleep_seconds: int):
         try:
-            data = MainTable(name=name,
-                             surname=surname)
+            data = MainTable(date=date,
+                             act_calories=act_calories,
+                             act_seconds=act_seconds,
+                             high_act_seconds=high_act_seconds,
+                             max_hr=max_hr,
+                             min_hr=min_hr,
+                             sleep_seconds=sleep_seconds)
             self._session.add(data)
         except Exception as ex:
             app_log.error(f"Can not insert into main table: {ex}")
@@ -96,9 +108,20 @@ class LocalDb:
 
 if __name__ == "__main__":
     app_log.info("Create db app starts.")
-    a = LocalDb(local_db_name)
-    a.create_main_table()
-    a.open_session()
-    a.close_session()
-    a.close_engine()
+    tdate = "2021-09-26"
+    garm = MyGarmin()
+    garm.connect()
+    garm.get_stats(tdate)
+    ldb = LocalDb(local_db_name)
+    ldb.create_main_table()
+    ldb.open_session()
+    ldb.insert_entry(date=garm.get_date,
+                    act_calories=garm.get_active_calories,
+                    act_seconds=garm.get_active_seconds,
+                    high_act_seconds=garm.get_high_active_seconds,
+                    max_hr=garm.get_max_hr,
+                    min_hr=garm.get_min_hr,
+                    sleep_seconds=garm.get_sleep_seconds)
+    ldb.close_session()
+    ldb.close_engine()
     app_log.info("Create db app ends")

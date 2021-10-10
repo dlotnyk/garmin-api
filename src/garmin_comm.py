@@ -1,7 +1,8 @@
 import pprint
 from garminconnect import Garmin, GarminConnectConnectionError, GarminConnectAuthenticationError, GarminConnectTooManyRequestsError
-from typing import Optional
+from typing import Optional, Dict
 import os
+from datetime import datetime
 import json
 import rsa
 import functools
@@ -44,6 +45,7 @@ class MyGarmin:
         self.get_user_login()
         self.get_pwd()
         self.create_garmin_inst()
+        self._day_stats = dict()
 
     @error_wrap
     def create_garmin_inst(self):
@@ -106,12 +108,46 @@ class MyGarmin:
         return self.client.get_steps_data(day)
 
     @error_wrap
-    def get_stats(self, day: str):
-        return self.client.get_stats(day)
-
-    @error_wrap
     def get_activities(self, start=0, limit=1):
         return self.client.get_activities(start, limit)
+
+    @error_wrap
+    def get_stats(self, day: str):
+        self._day_stats = self.client.get_stats(day)
+        return self._day_stats
+
+    @property
+    def day_stats(self) -> Dict:
+        return self._day_stats
+
+    @property
+    def get_date(self) -> datetime:
+        text_date = self.day_stats.get("calendarDate")
+        return datetime.strptime(text_date, "%Y-%m-%d")
+
+    @property
+    def get_active_calories(self) -> float:
+        return self.day_stats.get("activeKilocalories")
+
+    @property
+    def get_active_seconds(self) -> int:
+        return self.day_stats.get("activeSeconds")
+
+    @property
+    def get_high_active_seconds(self) -> int:
+        return self.day_stats.get("highlyActiveSeconds")
+
+    @property
+    def get_max_hr(self) -> int:
+        return self.day_stats.get("maxHeartRate")
+
+    @property
+    def get_min_hr(self) -> int:
+        return self.day_stats.get("minHeartRate")
+
+    @property
+    def get_sleep_seconds(self) -> int:
+        return self.day_stats.get("sleepingSeconds")
 
 
 if __name__ == "__main__":
@@ -119,6 +155,8 @@ if __name__ == "__main__":
     app_log.info("Main app starts")
     cl = MyGarmin()
     cl.connect()
-    pprint.pprint(cl.get_stats(tdate))
+    cl.get_stats(tdate)
+    print(cl.get_date)
+    print(cl.get_max_hr)
     del cl
     app_log.info("Main app ends")
