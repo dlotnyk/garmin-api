@@ -2,7 +2,7 @@ import pprint
 from garminconnect import Garmin, GarminConnectConnectionError, GarminConnectAuthenticationError, GarminConnectTooManyRequestsError
 from typing import Optional, Dict
 import os
-from datetime import datetime
+import datetime
 import json
 import rsa
 import functools
@@ -121,9 +121,9 @@ class MyGarmin:
         return self._day_stats
 
     @property
-    def get_date(self) -> datetime:
+    def get_date(self) -> datetime.date:
         text_date = self.day_stats.get("calendarDate")
-        return datetime.strptime(text_date, "%Y-%m-%d")
+        return datetime.datetime.strptime(text_date, "%Y-%m-%d").date()
 
     @property
     def get_active_calories(self) -> float:

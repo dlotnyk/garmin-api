@@ -1,6 +1,7 @@
 import sqlalchemy as db
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
-from datetime import datetime
+import datetime
 import os
 from typing import List, Tuple
 
@@ -10,6 +11,11 @@ from garmin_comm import MyGarmin
 
 app_log = log_settings()
 local_db_name = "common.db"
+
+
+def daterange(start_date, end_date):
+    for n in range(int((end_date - start_date).days)):
+        yield start_date + datetime.timedelta(n)
 
 
 class LocalDb:
@@ -38,7 +44,7 @@ class LocalDb:
         metadata = db.MetaData()
         self.main_tb = db.Table(self._table_name, metadata,
                                 db.Column("id", db.Integer, primary_key=True, autoincrement=True),
-                                db.Column("date", db.DateTime, index=True, unique=True),
+                                db.Column("date", db.Date, index=True, unique=True),
                                 db.Column("actCalories", db.Float, nullable=True),
                                 db.Column("actSeconds", db.Integer, nullable=True),
                                 db.Column("highActSeconds", db.Integer, nullable=True),
@@ -84,7 +90,7 @@ class LocalDb:
         except Exception as ex:
             app_log.error(f"Engine NOT disposed: {ex}")
 
-    def insert_entry(self, date: datetime, act_calories: float, act_seconds: int,
+    def insert_entry(self, date: datetime.date, act_calories: float, act_seconds: int,
                      high_act_seconds: int, max_hr: int, min_hr: int, sleep_seconds: int):
         try:
             data = MainTable(date=date,
@@ -95,11 +101,14 @@ class LocalDb:
                              min_hr=min_hr,
                              sleep_seconds=sleep_seconds)
             self._session.add(data)
+            self._session.commit()
+        except IntegrityError:
+            app_log.warning(f"Item: {date} already in db")
+            self._session.rollback()
         except Exception as ex:
             app_log.error(f"Can not insert into main table: {ex}")
         else:
-            self._session.commit()
-            app_log.debug(f"Data committed to `{MainTable.__tablename__}`")
+            app_log.info(f"Data: {date} committed to `{MainTable.__tablename__}`")
 
     @property
     def select_all(self):
@@ -108,20 +117,22 @@ class LocalDb:
 
 if __name__ == "__main__":
     app_log.info("Create db app starts.")
-    tdate = "2021-09-26"
+    start_date = datetime.date(2021, 10, 8)
+    end_date = datetime.date(2021, 10, 9)
     garm = MyGarmin()
     garm.connect()
-    garm.get_stats(tdate)
     ldb = LocalDb(local_db_name)
     ldb.create_main_table()
     ldb.open_session()
-    ldb.insert_entry(date=garm.get_date,
-                    act_calories=garm.get_active_calories,
-                    act_seconds=garm.get_active_seconds,
-                    high_act_seconds=garm.get_high_active_seconds,
-                    max_hr=garm.get_max_hr,
-                    min_hr=garm.get_min_hr,
-                    sleep_seconds=garm.get_sleep_seconds)
+    for tday in daterange(start_date, end_date):
+        garm.get_stats(tday.strftime("%Y-%m-%d"))
+        ldb.insert_entry(date=garm.get_date,
+                        act_calories=garm.get_active_calories,
+                        act_seconds=garm.get_active_seconds,
+                        high_act_seconds=garm.get_high_active_seconds,
+                        max_hr=garm.get_max_hr,
+                        min_hr=garm.get_min_hr,
+                        sleep_seconds=garm.get_sleep_seconds)
     ldb.close_session()
     ldb.close_engine()
     app_log.info("Create db app ends")

@@ -11,7 +11,7 @@ class MainTable(Base):
     """
     __tablename__ = main_table_name
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    date = db.Column(db.DateTime, index=True, unique=True)
+    date = db.Column(db.Date, index=True, unique=True)
     actCalories = db.Column(db.Float, nullable=True)
     actSeconds = db.Column(db.Integer, nullable=True)
     highActSeconds = db.Column(db.Integer, nullable=True)
