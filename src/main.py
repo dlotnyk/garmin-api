@@ -1,5 +1,4 @@
 import pprint
-
 from garminconnect import Garmin, GarminConnectConnectionError, GarminConnectAuthenticationError, GarminConnectTooManyRequestsError
 from typing import Optional
 import os
@@ -64,8 +63,8 @@ class MyGarmin:
         with open(self.rsa_key_pass, "r") as priv:
             fil = priv.read()
             private_key = rsa.PrivateKey.load_pkcs1(fil.encode(), "PEM")
-        app_log.debug("Password received")
         self._pwd = rsa.decrypt(pwd, private_key).decode()
+        app_log.debug("Password received")
 
     def get_user_login(self):
         with open(self.login_path, "r", encoding="utf-8") as file1:

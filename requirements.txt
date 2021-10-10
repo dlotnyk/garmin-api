@@ -1,2 +1,4 @@
 requests
 garminconnect
+rsa
+sqlalchemy
