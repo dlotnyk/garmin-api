@@ -32,7 +32,7 @@ class MyGarmin:
 
     client = None
     retry_number = 5
-    default_sleep = 2
+    default_sleep = 5
     _user = None
     _pwd = None
     is_connect = False
@@ -84,6 +84,7 @@ class MyGarmin:
             except (GarminConnectConnectionError, GarminConnectTooManyRequestsError, GarminConnectAuthenticationError) as err:
                 app_log.info(f"Reconnection: {err}")
                 sleep(self.default_sleep)
+                self.create_garmin_inst()
             except Exception as ex:
                 app_log.info(f"Reconnection: {ex}")
                 sleep(self.default_sleep)
@@ -142,8 +143,20 @@ class MyGarmin:
         return self.day_stats.get("maxHeartRate")
 
     @property
+    def get_max_avg_hr(self) -> int:
+        return self.day_stats.get("maxAvgHeartRate")
+
+    @property
     def get_min_hr(self) -> int:
         return self.day_stats.get("minHeartRate")
+
+    @property
+    def get_rest_hr(self) -> int:
+        return self.day_stats.get("restingHeartRate")
+
+    @property
+    def get_min_avg_hr(self) -> int:
+        return self.day_stats.get("minAvgHeartRate")
 
     @property
     def get_sleep_seconds(self) -> int:
@@ -152,11 +165,9 @@ class MyGarmin:
 
 if __name__ == "__main__":
     tdate = "2021-09-26"
-    app_log.info("Main app starts")
+    app_log.info("Garmin connection starts")
     cl = MyGarmin()
     cl.connect()
-    cl.get_stats(tdate)
-    print(cl.get_date)
-    print(cl.get_max_hr)
+    pprint.pprint(cl.get_stats(tdate))
     del cl
-    app_log.info("Main app ends")
+    app_log.info("Garmin connection ends")

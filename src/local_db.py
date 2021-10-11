@@ -18,6 +18,10 @@ def daterange(start_date, end_date):
         yield start_date + datetime.timedelta(n)
 
 
+def to_integer(dt_time):
+    return 10000*dt_time.year + 100*dt_time.month + dt_time.day
+
+
 class LocalDb:
     """
     local db based of sqlite3
@@ -43,13 +47,16 @@ class LocalDb:
     def create_main_table(self):
         metadata = db.MetaData()
         self.main_tb = db.Table(self._table_name, metadata,
-                                db.Column("id", db.Integer, primary_key=True, autoincrement=True),
+                                db.Column("id", db.Integer, primary_key=True),
                                 db.Column("date", db.Date, index=True, unique=True),
                                 db.Column("actCalories", db.Float, nullable=True),
                                 db.Column("actSeconds", db.Integer, nullable=True),
                                 db.Column("highActSeconds", db.Integer, nullable=True),
                                 db.Column("maxHr", db.Integer, nullable=True),
+                                db.Column("maxAvgHr", db.Integer, nullable=True),
                                 db.Column("minHr", db.Integer, nullable=True),
+                                db.Column("minAvgHr", db.Integer, nullable=True),
+                                db.Column("restHR", db.Integer, nullable=True),
                                 db.Column("sleepSeconds", db.Integer, nullable=True)
                                 )
         try:
@@ -90,15 +97,21 @@ class LocalDb:
         except Exception as ex:
             app_log.error(f"Engine NOT disposed: {ex}")
 
-    def insert_entry(self, date: datetime.date, act_calories: float, act_seconds: int,
-                     high_act_seconds: int, max_hr: int, min_hr: int, sleep_seconds: int):
+    def insert_entry(self, id: int, date: datetime.date, act_calories: float,
+                     act_seconds: int, high_act_seconds: int, max_hr: int,
+                     max_avg_hr: int, min_avg_hr, rest_hr,
+                     min_hr: int, sleep_seconds: int):
         try:
-            data = MainTable(date=date,
+            data = MainTable(id=id,
+                             date=date,
                              act_calories=act_calories,
                              act_seconds=act_seconds,
                              high_act_seconds=high_act_seconds,
                              max_hr=max_hr,
+                             max_avg_hr=max_avg_hr,
                              min_hr=min_hr,
+                             min_avg_hr=min_avg_hr,
+                             rest_hr=rest_hr,
                              sleep_seconds=sleep_seconds)
             self._session.add(data)
             self._session.commit()
@@ -117,22 +130,27 @@ class LocalDb:
 
 if __name__ == "__main__":
     app_log.info("Create db app starts.")
-    start_date = datetime.date(2021, 10, 8)
-    end_date = datetime.date(2021, 10, 9)
+    start_date = datetime.date(2021, 2, 1)
+    end_date = datetime.date(2021, 10, 11)
     garm = MyGarmin()
     garm.connect()
     ldb = LocalDb(local_db_name)
     ldb.create_main_table()
     ldb.open_session()
     for tday in daterange(start_date, end_date):
+        gid = to_integer(tday)
         garm.get_stats(tday.strftime("%Y-%m-%d"))
-        ldb.insert_entry(date=garm.get_date,
-                        act_calories=garm.get_active_calories,
-                        act_seconds=garm.get_active_seconds,
-                        high_act_seconds=garm.get_high_active_seconds,
-                        max_hr=garm.get_max_hr,
-                        min_hr=garm.get_min_hr,
-                        sleep_seconds=garm.get_sleep_seconds)
+        ldb.insert_entry(id=gid,
+                         date=garm.get_date,
+                         act_calories=garm.get_active_calories,
+                         act_seconds=garm.get_active_seconds,
+                         high_act_seconds=garm.get_high_active_seconds,
+                         max_hr=garm.get_max_hr,
+                         max_avg_hr=garm.get_max_avg_hr,
+                         min_hr=garm.get_min_hr,
+                         min_avg_hr=garm.get_min_avg_hr,
+                         rest_hr=garm.get_rest_hr,
+                         sleep_seconds=garm.get_sleep_seconds)
     ldb.close_session()
     ldb.close_engine()
     app_log.info("Create db app ends")
